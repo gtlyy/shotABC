@@ -1,6 +1,6 @@
 /*
 This program is free software.
-shot.c Copyright © 2021 By Lizhidi.
+shotABC.c Copyright © 2025 By Lizhidi.
 */
 
 
