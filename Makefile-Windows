@@ -1,0 +1,18 @@
+
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include/SDL2
+CC=gcc
+
+Cflags=-I${includedir} -Dmain=SDL_main 
+Libs=-L${libdir}  -mwindows -lmingw32 -lSDL2main -lSDL2_image -lSDL2_ttf -lSDL2_mixer -lSDL2  
+
+shotABC.exe: shotABC.o
+	${CC} -Wall -o shotABC.exe shotABC.o ${Libs}
+
+shotABC.o: shotABC.c
+	${CC} -Wall -c shotABC.c ${Cflags}
+
+clean: shotABC.o shotABC.exe
+	rm -fv shotABC.o shotABC.exe
