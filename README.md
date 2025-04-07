@@ -6,4 +6,4 @@ This is a typing speed game where five letters randomly appear on the screen. Th
 ![](./screenshot.png)
 
 ## Licence
-GNU GENERAL PUBLIC LICENSE Version 3
+MIT License - see LICENSE for more details
