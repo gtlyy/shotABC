@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>shotABC</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        #gameContainer {
+            position: relative;
+        }
+        canvas {
+            display: block;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0, 200, 255, 0.3);
+        }
+        #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 800px;
+            height: 600px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 8px;
+            color: #fff;
+        }
+        #startScreen h1 {
+            font-size: 64px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px rgba(0, 200, 255, 0.8);
+        }
+        #startScreen p {
+            font-size: 22px;
+            color: #aaa;
+            margin-bottom: 50px;
+        }
+        #startScreen .hint {
+            font-size: 18px;
+            color: #00d4ff;
+            margin-bottom: 30px;
+        }
+        #startScreen .version {
+            font-size: 14px;
+            color: #666;
+            position: absolute;
+            bottom: 30px;
+        }
+        #startBtn {
+            padding: 15px 50px;
+            font-size: 24px;
+            background: linear-gradient(135deg, #00d4ff 0%, #0056b3 100%);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        #startBtn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.6);
+        }
+        #bestScore {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            color: #00d4ff;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+        #soundToggle {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            color: #00d4ff;
+            font-size: 20px;
+            cursor: pointer;
+            user-select: none;
+            transition: opacity 0.2s;
+        }
+        #soundToggle:hover {
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="startScreen">
+            <h1>shotABC</h1>
+            <p>五个字母随机出现，快速按键消灭它们！</p>
+            <div class="hint">按 空格键 开始游戏</div>
+            <button id="startBtn">开始游戏</button>
+            <div class="version">shotABC Web Version B1.0</div>
+        </div>
+        <div id="bestScore">最佳: --</div>
+        <div id="soundToggle">🔊 音效</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const startBtn = document.getElementById('startBtn');
+        const bestScoreEl = document.getElementById('bestScore');
+        const soundToggle = document.getElementById('soundToggle');
+
+        const WIDTH = 800;
+        const HEIGHT = 600;
+        const NUM = 5;
+        const FONTSIZE = 60;
+        
+        let letters = [];
+        let pos = [];
+        let startTime = 0;
+        let bestScore = null;
+        let pressCount = 0;
+        let rightCount = 0;
+        let gameRunning = false;
+        let explosions = [];
+        let soundEnabled = true;
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playTone(freq, duration, type = 'sine') {
+            if (!soundEnabled) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playLetterSound(letter) {
+            const freq = 200 + (letter.toUpperCase().charCodeAt(0) - 65) * 30;
+            playTone(freq, 0.15, 'triangle');
+        }
+
+        function playRightSound() {
+            playTone(800, 0.1);
+            setTimeout(() => playTone(1000, 0.1), 50);
+            setTimeout(() => playTone(1200, 0.15), 100);
+        }
+
+        function playWrongSound() {
+            playTone(150, 0.2, 'sawtooth');
+        }
+
+        function drawBackground() {
+            const gradient = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
+            gradient.addColorStop(0, '#0f0c29');
+            gradient.addColorStop(0.5, '#302b63');
+            gradient.addColorStop(1, '#24243e');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+            for (let i = 0; i < 25; i++) {
+                for (let j = 0; j < 19; j++) {
+                    ctx.fillRect(i * 32 + 10, j * 32 + 10, 2, 2);
+                }
+            }
+        }
+
+        function showLetters() {
+            ctx.font = `bold ${FONTSIZE}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            letters.forEach((letter, i) => {
+                if (letter) {
+                    ctx.fillStyle = '#00d4ff';
+                    ctx.shadowColor = '#00d4ff';
+                    ctx.shadowBlur = 15;
+                    ctx.fillText(letter, pos[i].x, pos[i].y);
+                    ctx.shadowBlur = 0;
+                }
+            });
+        }
+
+        function showExplosion(x, y) {
+            explosions.push({
+                x, y,
+                radius: 10,
+                alpha: 1,
+                color: `hsl(${Math.random() * 60 + 10}, 100%, 50%)`
+            });
+        }
+
+        function updateExplosions() {
+            explosions = explosions.filter(exp => {
+                exp.radius += 8;
+                exp.alpha -= 0.05;
+                return exp.alpha > 0;
+            });
+        }
+
+        function drawExplosions() {
+            explosions.forEach(exp => {
+                ctx.beginPath();
+                ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
+                ctx.fillStyle = exp.color.replace(')', `, ${exp.alpha})`).replace('hsl', 'hsla');
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.arc(exp.x, exp.y, exp.radius * 0.6, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${exp.alpha})`;
+                ctx.fill();
+            });
+        }
+
+        function randomLetters() {
+            letters = [];
+            pos = [];
+            for (let i = 0; i < NUM; i++) {
+                letters.push(String.fromCharCode(65 + Math.floor(Math.random() * 26)));
+                pos.push({
+                    x: 60 + Math.random() * (WIDTH - 120),
+                    y: 60 + Math.random() * (HEIGHT - 120)
+                });
+            }
+        }
+
+        function startGame() {
+            startScreen.style.display = 'none';
+            gameRunning = true;
+            pressCount = 0;
+            rightCount = 0;
+            randomLetters();
+            startTime = performance.now();
+            gameLoop();
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            drawBackground();
+            showLetters();
+            updateExplosions();
+            drawExplosions();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        function endRound() {
+            const time = performance.now() - startTime;
+            const timeSec = (time / 1000).toFixed(2);
+            
+            if (rightCount === NUM) {
+                if (bestScore === null || time < bestScore) {
+                    bestScore = time;
+                    bestScoreEl.textContent = `最佳: ${timeSec}秒`;
+                }
+            }
+            
+            setTimeout(() => {
+                if (gameRunning) {
+                    pressCount = 0;
+                    rightCount = 0;
+                    randomLetters();
+                    startTime = performance.now();
+                }
+            }, 500);
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            soundToggle.textContent = soundEnabled ? '🔊 音效' : '🔇 静音';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    if (audioCtx.state === 'suspended') {
+                        audioCtx.resume();
+                    }
+                    startGame();
+                }
+                return;
+            }
+            
+            const key = e.key.toLowerCase();
+            if (key >= 'a' && key <= 'z') {
+                pressCount++;
+                let hit = false;
+                
+                for (let i = 0; i < NUM; i++) {
+                    if (letters[i] && letters[i].toLowerCase() === key) {
+                        letters[i] = null;
+                        rightCount++;
+                        hit = true;
+                        playLetterSound(key);
+                        playRightSound();
+                        showExplosion(pos[i].x, pos[i].y);
+                        break;
+                    }
+                }
+                
+                if (!hit) {
+                    playWrongSound();
+                }
+                
+                if (pressCount >= NUM) {
+                    endRound();
+                }
+            }
+        });
+
+        startBtn.addEventListener('click', () => {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            startGame();
+        });
+
+        soundToggle.addEventListener('click', toggleSound);
+
+        drawBackground();
+    </script>
+</body>
+</html>

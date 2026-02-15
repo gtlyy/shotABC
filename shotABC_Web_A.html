@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>shotABC</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            cursor: default;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.8);
+            z-index: 100;
+        }
+        
+        #start-screen h1 {
+            font-size: 48px;
+            margin-bottom: 30px;
+            color: #ffeb3b;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+        }
+        
+        #startScreen .version {
+            font-size: 14px;
+            color: #666;
+            position: absolute;
+            bottom: 30px;
+        }      
+        
+        #rules {
+            max-width: 600px;
+            text-align: center;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            padding: 0 20px;
+        }
+        
+        #rules p {
+            margin: 10px 0;
+            font-size: 18px;
+        }
+        
+        #start-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        #start-button:hover {
+            background: #45a049;
+        }
+        
+        .letter {
+            position: absolute;
+            font-size: 60px;
+            font-weight: bold;
+            user-select: none;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            transition: transform 0.1s ease;
+        }
+        
+        .letter.hit {
+            opacity: 0.3;
+            transform: scale(0.8);
+        }
+        
+        .explosion {
+            position: absolute;
+            width: 40px; /* 缩小50% */
+            height: 40px; /* 缩小50% */
+            background-image: url('right.bmp');
+            background-size: contain;
+            background-repeat: no-repeat;
+            pointer-events: none;
+            opacity: 0;
+            animation: explode 1s forwards;
+        }
+        
+        @keyframes explode {
+            0% { opacity: 0; transform: scale(0.5); }
+            50% { opacity: 1; transform: scale(1.2); }
+            100% { opacity: 0.7; transform: scale(1); }
+        }
+        
+        #status {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 18px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+        
+        #results {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+        }
+        
+        #results h2 {
+            margin: 0 0 20px 0;
+            color: #ffeb3b;
+        }
+        
+        #results p {
+            margin: 10px 0;
+            font-size: 20px;
+        }
+        
+        #audio-warning {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,0,0,0.8);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+        }
+        
+        #audio-toggle, #reset-best {
+            position: absolute;
+            top: 20px;
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid white;
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 10;
+            transition: background 0.3s;
+        }
+        
+        #audio-toggle {
+            left: 20px;
+        }
+        
+        #reset-best {
+            left: 120px;
+        }
+        
+        #audio-toggle:hover, #reset-best:hover {
+            background: rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="start-screen">
+            <h1>shotABC</h1>
+            <div id="rules">
+                <p><strong>游戏规则：</strong></p>
+                <p>• 屏幕上会随机出现5个字母</p>
+                <p>• 请迅速按键击中</p>
+            </div>
+            <button id="start-button">按空格键或点击开始</button>
+            <br><br>
+            <div class="version">shotABC Web Version A1.0</div>
+        </div>
+        
+        <div id="audio-toggle">🔇 音效: 关</div>
+        <div id="reset-best">🗑️ 重置最佳</div>
+        <div id="status"></div>
+        <div id="instructions"></div>
+        <div id="results">
+            <h2>游戏结束！</h2>
+            <p id="current-time">当前用时: --</p>
+            <p id="best-time">历史最佳: --</p>
+            <p id="result-message"></p>
+            <p>按空格键开始下一局</p>
+        </div>
+        <div id="audio-warning">
+            <p>⚠️ 音频功能受限</p>
+            <p>请先点击页面任意位置启用音效</p>
+        </div>
+    </div>
+
+    <script>
+        // 使用 Audio 对象而不是 Web Audio API（更简单，兼容性更好）
+        const audioElements = {};
+        let bestTime = localStorage.getItem('shotABC_bestTime') || null;
+        let audioEnabled = false;
+        let soundOn = false; // 默认关闭
+        
+        // 游戏状态
+        let gameState = 'waiting'; // waiting, playing, finished
+        let letters = [];
+        let pressedCount = 0;
+        let correctCount = 0;
+        let startTime = 0;
+        let letterElements = [];
+        let explosionElements = [];
+        
+        // 预加载所有音效
+        function preloadAudio() {
+            const soundFiles = [
+                'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 
+                'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+                'Sbao', 'Swrong', 'Sother'
+            ];
+            
+            for (const file of soundFiles) {
+                try {
+                    const audio = new Audio(`${file}.wav`);
+                    audio.preload = 'auto';
+                    audio.load();
+                    audioElements[file] = audio;
+                } catch (error) {
+                    console.warn(`Failed to load sound: ${file}`, error);
+                }
+            }
+        }
+        
+        // 播放音效（处理浏览器自动播放策略）
+        function playSound(soundName) {
+            if (!soundOn || !audioElements[soundName]) {
+                return;
+            }
+            
+            try {
+                // 克隆音频元素以支持同时播放多个音效
+                const audio = audioElements[soundName].cloneNode();
+                audio.volume = 0.7;
+                audio.play().catch(error => {
+                    // 如果播放被阻止，显示提示
+                    if (!audioEnabled) {
+                        document.getElementById('audio-warning').style.display = 'block';
+                    }
+                });
+            } catch (error) {
+                console.warn('Failed to play sound:', error);
+            }
+        }
+        
+        // 启用音频（用户交互后）
+        function enableAudio() {
+            if (audioEnabled) return;
+            audioEnabled = true;
+            document.getElementById('audio-warning').style.display = 'none';
+            
+            // 测试播放一个音效
+            try {
+                const testAudio = new Audio('Sother.wav');
+                testAudio.volume = 0.1;
+                testAudio.play().catch(() => {});
+            } catch (e) {}
+        }
+        
+        // 切换音效开关
+        function toggleSound() {
+            soundOn = !soundOn;
+            const toggleBtn = document.getElementById('audio-toggle');
+            toggleBtn.textContent = soundOn ? '🔊 音效: 开' : '🔇 音效: 关';
+            toggleBtn.style.background = soundOn ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.2)';
+        }
+        
+        // 重置最佳成绩
+        function resetBestTime() {
+            bestTime = null;
+            localStorage.removeItem('shotABC_bestTime');
+            
+            // 显示非阻塞提示
+            const notification = document.createElement('div');
+            notification.textContent = '已重置最佳成绩！';
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0,0,0,0.8);
+                color: #4CAF50;
+                padding: 10px 20px;
+                border-radius: 5px;
+                z-index: 1000;
+                font-size: 16px;
+                pointer-events: none;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+            document.body.appendChild(notification);
+            
+            // 淡入显示
+            setTimeout(() => {
+                notification.style.opacity = '1';
+            }, 100);
+            
+            // 2秒后淡出消失
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 2000);
+        }
+        
+        function createLetters() {
+            const container = document.getElementById('game-container');
+            letters = [];
+            letterElements = [];
+            explosionElements = [];
+            
+            // 生成5个随机字母
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            for (let i = 0; i < 5; i++) {
+                const char = chars[Math.floor(Math.random() * chars.length)];
+                letters.push(char);
+                
+                // 随机位置
+                const x = Math.random() * (window.innerWidth - 100) + 50;
+                const y = Math.random() * (window.innerHeight - 200) + 100;
+                
+                // 创建字母元素
+                const letterEl = document.createElement('div');
+                letterEl.className = 'letter';
+                letterEl.textContent = char;
+                letterEl.style.left = x + 'px';
+                letterEl.style.top = y + 'px';
+                letterEl.dataset.index = i;
+                letterEl.dataset.hit = 'false';
+                
+                container.appendChild(letterEl);
+                letterElements.push(letterEl);
+            }
+        }
+        
+        function showExplosion(x, y) {
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.style.left = (x - 20) + 'px'; // 调整位置适应缩小的贴图
+            explosion.style.top = (y - 20) + 'px';
+            document.getElementById('game-container').appendChild(explosion);
+            explosionElements.push(explosion);
+            
+            // 保持爆炸效果
+            setTimeout(() => {
+                explosion.style.opacity = '0.3';
+            }, 1000);
+        }
+        
+        function startGame() {
+            // 隐藏开始界面
+            document.getElementById('start-screen').style.display = 'none';
+            
+            // 清理之前的元素
+            letterElements.forEach(el => el.remove());
+            explosionElements.forEach(el => el.remove());
+            document.getElementById('results').style.display = 'none';
+            
+            gameState = 'playing';
+            pressedCount = 0;
+            correctCount = 0;
+            document.getElementById('status').textContent = '';
+            document.getElementById('instructions').textContent = '';
+            
+            createLetters();
+            startTime = Date.now();
+            
+            // 启用音频
+            enableAudio();
+        }
+        
+        function endGame() {
+            gameState = 'finished';
+            const endTime = Date.now();
+            const timeTaken = ((endTime - startTime) / 1000).toFixed(2);
+            
+            // 更新最佳成绩（只有全对才记录）
+            if (correctCount === 5) {
+                if (!bestTime || parseFloat(timeTaken) < parseFloat(bestTime)) {
+                    bestTime = timeTaken;
+                    localStorage.setItem('shotABC_bestTime', bestTime);
+                }
+            }
+            
+            // 显示结果
+            document.getElementById('current-time').textContent = `当前用时: ${timeTaken}秒`;
+            document.getElementById('best-time').textContent = bestTime ? `历史最佳: ${bestTime}秒` : '历史最佳: --';
+            document.getElementById('result-message').textContent = 
+                correctCount === 5 ? '🎉 全部正确！' : `❌ 正确: ${correctCount}/5`;
+            
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('instructions').textContent = '按空格键开始下一局';
+        }
+        
+        function handleKeyPress(event) {
+            if (event.key === ' ') {
+                event.preventDefault();
+                enableAudio(); // 确保音频启用
+                
+                if (gameState === 'waiting' || gameState === 'finished') {
+                    startGame();
+                }
+                return;
+            }
+            
+            if (gameState !== 'playing') {
+                return;
+            }
+            
+            // 只处理字母键
+            if (event.key.length === 1 && /[a-zA-Z]/.test(event.key)) {
+                pressedCount++;
+                const pressedKey = event.key.toUpperCase();
+                
+                let found = false;
+                for (let i = 0; i < letters.length; i++) {
+                    if (letters[i] === pressedKey && letterElements[i].dataset.hit === 'false') {
+                        // 按对了
+                        correctCount++;
+                        letterElements[i].dataset.hit = 'true';
+                        letterElements[i].classList.add('hit');
+                        
+                        // 播放对应字母音效
+                        playSound(pressedKey.toLowerCase());
+                        
+                        // 显示爆炸效果
+                        const rect = letterElements[i].getBoundingClientRect();
+                        showExplosion(rect.left + rect.width/2, rect.top + rect.height/2);
+                        
+                        found = true;
+                        break;
+                    }
+                }
+                
+                if (!found) {
+                    // 按错了或重复按键
+                    playSound('Swrong');
+                }
+                
+                // 检查是否按了5次
+                if (pressedCount >= 5) {
+                    endGame();
+                }
+            } else {
+                // 非字母键
+                if (gameState === 'playing') {
+                    playSound('Sother');
+                }
+            }
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            preloadAudio();
+            
+            // 设置音效开关
+            document.getElementById('audio-toggle').addEventListener('click', toggleSound);
+            
+            // 设置重置按钮
+            document.getElementById('reset-best').addEventListener('click', resetBestTime);
+            
+            // 开始按钮
+            document.getElementById('start-button').addEventListener('click', () => {
+                if (gameState === 'waiting') {
+                    startGame();
+                }
+            });
+            
+            document.addEventListener('keydown', handleKeyPress);
+            
+            // 处理用户点击以启用音频
+            document.addEventListener('click', enableAudio);
+            document.addEventListener('touchstart', enableAudio);
+            
+            // 防止页面滚动
+            document.addEventListener('keydown', (e) => {
+                if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                    e.preventDefault();
+                }
+            });
+        });
+        
+        // 处理窗口大小变化
+        window.addEventListener('resize', () => {
+            if (gameState === 'playing') {
+                // 简化处理
+            }
+        });
+    </script>
+</body>
+</html>
