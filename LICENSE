@@ -33,6 +33,14 @@ FreeSans.ttf
   The GPL Font Exception allows this font to be embedded in an otherwise
   non-GPL document without causing the document to become GPL.
 
-SDL2 libraries
+SDL2 libraries (SDL2.dll, SDL2_image.dll, SDL2_mixer.dll, SDL2_ttf.dll)
   SDL2, SDL2_image, SDL2_mixer, SDL2_ttf
   Licensed under the zlib License (see https://www.libsdl.org/license.php).
+
+libfreetype-6.dll
+  FreeType font rendering library (used by SDL2_ttf).
+  Licensed under the FreeType License (see https://freetype.org/license.html).
+
+zlib1.dll
+  zlib compression library (used by SDL2_image / libpng).
+  Licensed under the zlib License (see https://www.zlib.net/zlib_license.html).
