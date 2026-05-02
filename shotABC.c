@@ -17,8 +17,8 @@ char *version = "shotABC-2.1";
 #include <SDL_ttf.h>
 #include <SDL_mixer.h>
 
-#define	SCREEN_WIDTH  	640
-#define	 SCREEN_HEIGHT 	480
+#define	SCREEN_WIDTH  	800
+#define	 SCREEN_HEIGHT 	600
 #define 	FONTFILE			"FreeSans.ttf"
 #define 	FONTSIZE			50
 #define	NUM				5
@@ -92,6 +92,8 @@ void Show_Letters()
 	int i = 0; 
         char c[]="a";
 	SDL_Rect	rect;
+	SDL_RenderClear(renderer);
+	SDL_RenderCopy(renderer, background, NULL, NULL);
 	for ( ; i<NUM ; ++i) {
 		c[0] = letters[i];
 		c[1] = '\0';
@@ -108,12 +110,25 @@ void Show_Letters()
 /* 按对了，爆炸一下 */
 void Show_Bao(SDL_Point p)
 {
-        //printf("In Show_Bao()\n");
+	int i;
+	char c[]="a";
 	SDL_Rect	rect;
+	SDL_RenderClear(renderer);
+	SDL_RenderCopy(renderer, background, NULL, NULL);
+	for (i = 0; i < NUM; i++) {
+		if (letters[i] != '\0') {
+			c[0] = letters[i];
+			c[1] = '\0';
+			rect.x = pos[i].x;
+			rect.y = pos[i].y;
+			ls = Render_Text(c, renderer);
+			SDL_QueryTexture(ls, NULL, NULL, &rect.w, &rect.h);
+			SDL_RenderCopy(renderer, ls, NULL, &rect);
+		}
+	}
 	SDL_QueryTexture(bao, NULL, NULL, &rect.w, &rect.h);
 	rect.x = p.x ;
 	rect.y = p.y ;
-	SDL_SetTextureBlendMode (bao, SDL_TEXTUREMODULATE_NONE);  /* NO 混合 */
 	SDL_RenderCopy (renderer, bao, NULL, &rect);
 	SDL_RenderPresent(renderer);
 }
@@ -121,20 +136,7 @@ void Show_Bao(SDL_Point p)
 /* 重刷屏幕，主要是重刷字体位置 */
 void Clear_Screen()
 {
-        //int i=0;
-        //SDL_Rect	rect;
-
-        //SDL_SetTextureBlendMode (background, SDL_TEXTUREMODULATE_NONE);  /* NO 混合 */
-/*
-	for ( ; i<NUM; ++i) {
-		rect.x = pos[i].x;
-		rect.y = pos[i].y;
-		rect.w = FONTSIZE * 2;
-		rect.h = FONTSIZE * 2 ;
-		SDL_RenderCopy (renderer, background, &rect, &rect);
-                SDL_Delay(500);
-	}
-*/
+	SDL_RenderClear(renderer);
         SDL_RenderCopy (renderer, background, NULL, NULL);
 	SDL_RenderPresent(renderer);
 }
