@@ -1,10 +1,10 @@
 /*
 This program is free software.
-shotABC.c Copyright © 2025 By Lizhidi.
+shotABC.c Copyright © 2026 By Lizhidi.
 */
 
 
-char *version = "shotABC-2.1";
+char *version = "shotABC-2.3";
 
 #include <stdio.h>
 #include <stdlib.h>
